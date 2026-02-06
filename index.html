@@ -582,21 +582,19 @@ function showPopup(type){
   },1500);
 }
 function claimLixi(){
-   const last = localStorage.getItem("lixiDate");
-   const today = todayKey();
+  if(lixiClaimed){
+    showModal("lose");
+    document.getElementById("modalText").innerText =
+      "🧧 Bạn đã nhận lì xì rồi! Reload trang để nhận lại.";
+    return;
+  }
 
-   if(last === today){
-     showModal("lose");
-     document.getElementById("modalText").innerText =
-       "🧧 Hôm nay bạn đã nhận lì xì rồi!";
-     return;
-   }
+  const amount = Math.floor(Math.random()*401) + 500;
 
-  const amount = Math.floor(Math.random()*401)+500; // 100–300
   money += amount;
   document.getElementById("money").innerText = money;
 
-   localStorage.setItem("lixiDate", today);
+  lixiClaimed = true;
 
   showModal("win");
   document.getElementById("modalText").innerText =
@@ -604,7 +602,6 @@ function claimLixi(){
 
   document.getElementById("lixiBtn").disabled = true;
 }
-
 /* ===== HISTORY ===== */
 function addHistory(text){
   const div = document.createElement("div");
@@ -622,4 +619,5 @@ function rand(){
 </body>
 
 </html>
+
 
