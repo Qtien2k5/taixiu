@@ -256,7 +256,19 @@ body{
   opacity:1;
   pointer-events:auto;
 }
-
+#lixiBtn{
+  padding:8px 14px;
+  border:none;
+  border-radius:10px;
+  background:linear-gradient(45deg,#facc15,#f97316);
+  color:#000;
+  font-weight:bold;
+  cursor:pointer;
+}
+#lixiBtn:disabled{
+  opacity:.5;
+  cursor:not-allowed;
+}
 
 </style>
 </head>
@@ -266,7 +278,8 @@ body{
   <div class="top">🎲 TÀI XỈU CASINO</div>
 
   <div class="money">💰 Tiền: <span id="money">1000</span></div>
-
+<button id="lixiBtn" onclick="claimLixi()">🧧 Nhận lì xì</button>
+  
   <div class="bet">
     🎯 Cược:
     <button onclick="changeBet(-25)">−</button>
@@ -568,7 +581,29 @@ function showPopup(type){
     overlay.classList.add("hidden");
   },1500);
 }
+function claimLixi(){
+   const last = localStorage.getItem("lixiDate");
+   const today = todayKey();
 
+   if(last === today){
+     showModal("lose");
+     document.getElementById("modalText").innerText =
+       "🧧 Hôm nay bạn đã nhận lì xì rồi!";
+     return;
+   }
+
+  const amount = Math.floor(Math.random()*401)+500; // 100–300
+  money += amount;
+  document.getElementById("money").innerText = money;
+
+   localStorage.setItem("lixiDate", today);
+
+  showModal("win");
+  document.getElementById("modalText").innerText =
+    `🧧 Bạn nhận được ${amount} tiền lì xì!`;
+
+  document.getElementById("lixiBtn").disabled = true;
+}
 
 /* ===== HISTORY ===== */
 function addHistory(text){
@@ -587,3 +622,4 @@ function rand(){
 </body>
 
 </html>
+
