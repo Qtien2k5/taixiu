@@ -26,6 +26,11 @@ body{
 /* TEXT */
 .top{text-align:center;font-weight:bold;}
 .money,.bet{text-align:center;margin:6px 0;}
+.money-area{
+  text-align:center;
+  margin:8px 0;
+}
+
 
 /* BET */
 .bet{
@@ -277,8 +282,11 @@ body{
 <div class="game">
   <div class="top">🎲 TÀI XỈU CASINO</div>
 
+<div class="money-area">
   <div class="money">💰 Tiền: <span id="money">1000</span></div>
-<button id="lixiBtn" onclick="claimLixi()">🧧 Nhận lì xì</button>
+  <button id="lixiBtn">🧧 Nhận lì xì</button>
+</div>
+
   
   <div class="bet">
     🎯 Cược:
@@ -620,6 +628,7 @@ function rand(){
 </body>
 
 </html>
+
 
 
 
