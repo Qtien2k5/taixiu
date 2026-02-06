@@ -341,15 +341,15 @@ const historyList = document.getElementById("historyList");
 
 /* ===== BET ===== */
 function addBet(v){
-  if(pendingResult) return alert("Mở bát trước đã");
-  if(money < bet + v) return alert("Không đủ tiền");
+  if(pendingResult) return alert("Mở bát đi trời, đợi nhắc hả?");
+  if(money < bet + v) return alert("Đéo đủ tiền kìa cha ơi cha");
   bet += v;
   updateBet();
 }
 function changeBet(v){
   if(pendingResult) return;
   if(bet + v < 0) return;
-  if(money < bet + v) return alert("Không đủ tiền");
+  if(money < bet + v) return alert("Không đủ tiền, tao nuốt hết rồi");
   bet += v;
   updateBet();
 }
@@ -363,8 +363,8 @@ function updateBet(){
 
 /* ===== PLAY ===== */
 function play(choice){
-  if(bet === 0) return alert("Chưa đặt cược");
-  if(pendingResult) return alert("Mở bát trước");
+  if(bet === 0) return alert("Mày bị ngu à, đã đặt cược đâu");
+  if(pendingResult) return alert("Biết chơi không vậy, lậy bố");
 
   closeBowl();
 
@@ -585,4 +585,5 @@ function rand(){
 
 </script>
 </body>
+
 </html>
