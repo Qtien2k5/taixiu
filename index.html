@@ -278,6 +278,32 @@ body{
   opacity:.5;
   cursor:not-allowed;
 }
+  @keyframes shakeSide {
+  0%   { transform: translateX(0); }
+  15%  { transform: translateX(-25px); }
+  30%  { transform: translateX(25px); }
+  45%  { transform: translateX(-20px); }
+  60%  { transform: translateX(20px); }
+  75%  { transform: translateX(-10px); }
+  90%  { transform: translateX(10px); }
+  100% { transform: translateX(0); }
+}
+.shake-group.shaking{
+  animation: shakeSide 0.7s ease-in-out infinite;
+}
+
+.shake-group.shaking .bowl{
+  animation: tiltBowl 0.7s ease-in-out infinite;
+}
+
+@keyframes tiltBowl{
+  0%   { transform: rotate(0deg); }
+  25%  { transform: rotate(-6deg); }
+  50%  { transform: rotate(6deg); }
+  75%  { transform: rotate(-4deg); }
+  100% { transform: rotate(0deg); }
+}
+
 
 </style>
 </head>
@@ -317,7 +343,10 @@ body{
 
 
 
-  <div class="bowl-area">
+<div class="bowl-area">
+
+  <div class="shake-group" id="shakeGroup">
+
     <div class="dice-area">
       <div class="dice">?</div>
       <div class="dice">?</div>
@@ -329,6 +358,7 @@ body{
     </div>
 
     <div class="plate"></div>
+
   </div>
 
   <div class="buttons">
@@ -358,13 +388,13 @@ let isBowlOpen = false;
 let pendingResult = null;
 let resultHandled = false;
 let lixiClaimed = false;
-
 let winStreak = 0;
 
 const bowl = document.getElementById("bowl");
 const bowlWrap = document.getElementById("bowlWrap");
 const diceEls = document.querySelectorAll(".dice");
 const historyList = document.getElementById("historyList");
+const shakeGroup = document.getElementById("shakeGroup");
 
 /* ===== BET ===== */
 function addBet(v){
@@ -616,6 +646,20 @@ function claimLixi(){
 
   document.getElementById("lixiBtn").disabled = true;
 }
+function shakeBowl(duration = 1500){
+  if(!shakeGroup) {
+    console.error("❌ Không tìm thấy shakeGroup");
+    return;
+  }
+
+  shakeGroup.classList.add("shaking");
+
+  setTimeout(()=>{
+    shakeGroup.classList.remove("shaking");
+  }, duration);
+}
+
+  
 /* ===== HISTORY ===== */
 function addHistory(text){
   const div = document.createElement("div");
@@ -633,6 +677,7 @@ function rand(){
 </body>
 
 </html>
+
 
 
 
