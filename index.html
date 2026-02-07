@@ -112,10 +112,20 @@ body{
 .plate{
   position:absolute;
   bottom:0;
-  width:100%;
-  height:40px;
-  background:#9ca3af;
-  border-radius:50%;
+  left:50%;
+  transform:translateX(-50%);
+  width:360px;                 /* 👉 dĩa dài hơn */
+  height:20px;
+
+  background:radial-gradient(ellipse at center,
+    #f1f5f9 0%,
+    #cbd5e1 40%,
+    #9ca3af 65%,
+    #6b7280 100%);
+
+  border-radius:0 0 180px 180px;
+  z-index:6;                   /* 👉 CAO NHẤT */
+  pointer-events:none;
 }
 
 /* BUTTON */
@@ -292,17 +302,9 @@ body{
   animation: shakeSide 0.7s ease-in-out infinite;
 }
 
-.shake-group.shaking .bowl{
-  animation: tiltBowl 0.7s ease-in-out infinite;
-}
 
-@keyframes tiltBowl{
-  0%   { transform: rotate(0deg); }
-  25%  { transform: rotate(-6deg); }
-  50%  { transform: rotate(6deg); }
-  75%  { transform: rotate(-4deg); }
-  100% { transform: rotate(0deg); }
-}
+
+
 
 
 </style>
@@ -361,16 +363,19 @@ body{
 
   </div>
 
-  <div class="buttons">
+  
+
+</div>
+
+<div class="buttons">
     <button class="tai" onclick="play('tai')">TÀI</button>
     <button class="xiu" onclick="play('xiu')">XỈU</button>
   </div>
 
-  <div class="history">
+<div class="history">
     <h4>Lịch sử</h4>
     <div id="historyList"></div>
   </div>
-</div>
 <!-- POPUP THẮNG / THUA -->
 <div id="overlay" class="overlay hidden">
   <div class="popup">
@@ -395,6 +400,7 @@ const bowlWrap = document.getElementById("bowlWrap");
 const diceEls = document.querySelectorAll(".dice");
 const historyList = document.getElementById("historyList");
 const shakeGroup = document.getElementById("shakeGroup");
+
 
 /* ===== BET ===== */
 function addBet(v){
@@ -422,6 +428,7 @@ function updateBet(){
 function play(choice){
   if(bet === 0) return alert("Mày bị ngu à, đã đặt cược đâu");
   if(pendingResult) return alert("Biết chơi không vậy, lậy bố");
+  shakeBowl(3000);
 
   closeBowl();
 
@@ -461,8 +468,41 @@ function openBowl(){
 
   if(result === "triple"){
     winStreak = 0;
-    rewardMultiplier = 1;
-    money -= bet;
+    if(result === "triple"){
+  winStreak = 0;
+
+  // đã trừ tiền từ trước → không cộng lại
+  addHistory(`${d1}-${d2}-${d3} | BỘ BA | ${total}`);
+  showPopup("lose");
+}
+
+else if(result === choice){
+  winStreak++;
+
+  const rewardMultiplier = getMultiplier(winStreak);
+
+  // trả tiền: vốn + lãi
+  const payout = bet * (rewardMultiplier + 1);
+  money += payout;
+
+  showMultiplierFloat(rewardMultiplier);
+
+  addHistory(
+    `${d1}-${d2}-${d3} | ${result.toUpperCase()} | ${total} ×${rewardMultiplier}`
+  );
+
+  showPopup("win");
+}
+
+else{
+  winStreak = 0;
+
+  // thua thì mất tiền cược đã trừ
+  addHistory(`${d1}-${d2}-${d3} | ${result.toUpperCase()} | ${total}`);
+  showPopup("lose");
+}
+
+  document.getElementById("money").innerText = money;
     addHistory(`${d1}-${d2}-${d3} | BỘ BA | ${total}`);
     showPopup("lose");
   }
@@ -493,6 +533,8 @@ function openBowl(){
   document.getElementById("money").innerText = money;
   clearBet();
   pendingResult = null;
+
+
 }
 function getMultiplier(streak){
   if(streak >= 10) return 5;
@@ -646,18 +688,6 @@ function claimLixi(){
 
   document.getElementById("lixiBtn").disabled = true;
 }
-function shakeBowl(duration = 1500){
-  if(!shakeGroup) {
-    console.error("❌ Không tìm thấy shakeGroup");
-    return;
-  }
-
-  shakeGroup.classList.add("shaking");
-
-  setTimeout(()=>{
-    shakeGroup.classList.remove("shaking");
-  }, duration);
-}
 
   
 /* ===== HISTORY ===== */
@@ -675,12 +705,4 @@ function rand(){
 
 </script>
 </body>
-
 </html>
-
-
-
-
-
-
-
