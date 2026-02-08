@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-    <link rel="icon" type="image/png" sizes="32x32" href="images/favicon.ico">
+  <link rel="icon" type="image/png" sizes="32x32" href="images/favicon.ico">
 <meta charset="UTF-8">
 <title>Tài Xỉu Casino</title>
 
 <style>
 body{
-  margin:30;
+  margin:30px;
   background:#0b1020;
   color:#fff;
   font-family:Arial, sans-serif;
@@ -20,6 +20,7 @@ body{
   background-position: center;
   background-repeat: no-repeat;
 }
+
 
 .game{
   width:420px;
@@ -360,15 +361,37 @@ body{
   z-index:1;
 }
 
+.dice.reveal{
+  animation: popDice .25s ease-out;
+}
+
+@keyframes popDice{
+  0%{ transform:scale(.6); opacity:0; }
+  100%{ transform:scale(1); opacity:1; }
+}
+
+#fireworks{
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  z-index:300;
+}
+.fw-canvas{
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+
 </style>
 </head>
-
 <body>
 <div class="game">
   <div class="top">🎲 TÀI XỈU CASINO</div>
 
 <div class="money-area">
-  <div class="money">💰 Tiền: <span id="money">1000</span></div>
+  <div class="money">💰 Tiền: <span id="money">2000</span></div>
   <button id="lixiBtn" onclick="claimLixi()">🧧 Nhận lì xì</button>
 
 </div>
@@ -376,9 +399,9 @@ body{
   
   <div class="bet">
     🎯 Cược:
-    <button onclick="changeBet(-25)">−</button>
+    <button onclick="changeBet(-10)">−</button>
     <span id="bet">0</span>
-    <button onclick="changeBet(25)">+</button>
+    <button onclick="changeBet(10)">+</button>
     <button onclick="clearBet()">🗑</button>
   </div>
 
@@ -389,7 +412,6 @@ body{
     <img src="images/chip-250.png" class="chip" onclick="addBet(250)">
     <img src="images/chip-500.png" class="chip" onclick="addBet(500)">
     <img src="images/chip-1000.png" class="chip" onclick="addBet(1000)">
-
   </div>
 
 <div class="buff-bar">
@@ -398,10 +420,6 @@ body{
   <div class="buff buff-5" data-m="5"></div>
 </div>
 
-
-
-
-<!-- overlay nền mờ -->
 
 <div class="bowl-area">
   <div class="shake-group" id="shakeGroup">
@@ -423,7 +441,6 @@ body{
 <div id="focusOverlay"></div>
 
 
-
 <div class="buttons">
     <button class="tai" onclick="play('tai')">TÀI</button>
     <button class="xiu" onclick="play('xiu')">XỈU</button>
@@ -438,26 +455,30 @@ body{
   <div class="popup">
     <h2 id="popupTitle"></h2>
     <p id="popupText"></p>
-    <canvas id="fireworks"></canvas>
   </div>
 </div>
+<canvas id="fireworks" class="fw-canvas"></canvas>
 
 
 <script>
-let money = 1000;
+let money = 2000;
 let bet = 0;
 let isBowlOpen = false;
 let pendingResult = null;
 let resultHandled = false;
 let lixiClaimed = false;
 let winStreak = 0;
+let fireworks = [];
+let particles = [];
+let fwRunning = false;
 
 const bowl = document.getElementById("bowl");
 const bowlWrap = document.getElementById("bowlWrap");
 const diceEls = document.querySelectorAll(".dice");
 const historyList = document.getElementById("historyList");
 const focusOverlay = document.getElementById("focusOverlay");
-
+const fwCanvas = document.getElementById("fireworks");
+const ctx = fwCanvas.getContext("2d");
 
 
 /* ===== BET ===== */
@@ -486,6 +507,11 @@ function updateBet(){
 function play(choice){
   if(bet === 0) return alert("Mày bị ngu à, đã đặt cược đâu");
   if(pendingResult) return alert("Biết chơi không vậy, lậy bố");
+
+  // ✅ TRỪ TIỀN NGAY KHI CHƠI
+  money -= bet;
+  document.getElementById("money").innerText = money;
+
   startShake();
   closeBowl();
 
@@ -512,6 +538,7 @@ function play(choice){
 /* ===== MỞ BÁT ===== */
 function openBowl(){
   if(!pendingResult || resultHandled) return;
+  
   stopShake();
 
   resultHandled = true;
@@ -519,12 +546,28 @@ function openBowl(){
   bowlWrap.style.transform = "translateY(-80px)";
 
   const { d1,d2,d3,total,result,choice } = pendingResult;
-
-  // hiện xúc xắc
+  // reset về ?
+diceEls.forEach(d=>{
+  d.innerText = "?";
+  d.classList.remove("reveal");
+});
+  // hiện từng viên xúc xắc
+setTimeout(()=>{
   diceEls[0].innerText = d1;
-  diceEls[1].innerText = d2;
-  diceEls[2].innerText = d3;
+  diceEls[0].classList.add("reveal");
+}, 200);
 
+setTimeout(()=>{
+  diceEls[1].innerText = d2;
+  diceEls[1].classList.add("reveal");
+}, 350);
+
+setTimeout(()=>{
+  diceEls[2].innerText = d3;
+  diceEls[2].classList.add("reveal");
+}, 500);
+
+setTimeout(()=>{
   /* ===== XỬ LÝ KẾT QUẢ ===== */
   if(result === "triple"){
     winStreak = 0;
@@ -542,6 +585,12 @@ function openBowl(){
     // trả vốn + lãi
     const payout = bet * (rewardMultiplier + 1);
     money += payout;
+    if(payout >= 1000){
+    const count = Math.min(30, Math.floor(payout / 500));
+      launchFireworks(count);
+      fwLoop();
+    }
+
 
     showMultiplierFloat(rewardMultiplier);
 
@@ -551,6 +600,7 @@ function openBowl(){
 
     showPopup("win");
   }
+
 
   else{
     winStreak = 0;
@@ -566,6 +616,7 @@ function openBowl(){
   clearBet();
 
   pendingResult = null;
+}, 650);
 }
 
 
@@ -744,6 +795,96 @@ function stopShake(){
   focusOverlay.classList.remove("show");
 }
 
+function resizeFW(){
+  fwCanvas.width = window.innerWidth;
+  fwCanvas.height = window.innerHeight;
+}
+window.addEventListener("resize", resizeFW);
+resizeFW();
+
+class Firework{
+  constructor(){
+    this.x = Math.random() * fwCanvas.width;
+    this.y = fwCanvas.height;
+    this.targetY = Math.random() * fwCanvas.height * 0.4 + 80;
+    this.speed = Math.random() * 3 + 4;
+    this.exploded = false;
+  }
+  update(){
+    this.y -= this.speed;
+    if(this.y <= this.targetY){
+      this.explode();
+      this.exploded = true;
+    }
+  }
+  draw(){
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(this.x, this.y, 2, 6);
+  }
+    explode(){
+    for(let i=0;i<120;i++){   // 👈 từ 50 → 120
+      particles.push(new Particle(this.x,this.y));
+    }
+  }
+}
+
+class Particle{
+  constructor(x,y){
+    this.x = x;
+    this.y = y;
+    const angle = Math.random()*Math.PI*2;
+    const speed = Math.random()*6+3;
+    this.vx = Math.cos(angle)*speed;
+    this.vy = Math.sin(angle)*speed;
+    this.life = 90;
+    this.color = `hsl(${Math.random()*360},100%,70%)`;
+  }
+  update(){
+    this.x += this.vx;
+    this.y += this.vy;
+    this.vy += 0.05;
+    this.life--;
+  }
+  draw(){
+    ctx.fillStyle = this.color;
+    ctx.fillRect(this.x,this.y,3,3);
+  }
+}
+
+function launchFireworks(count=5){
+  fwRunning = true;
+  for(let i=0;i<count;i++){
+    fireworks.push(new Firework());
+  }
+}
+
+function fwLoop(){
+  if(!fwRunning) return;
+
+  ctx.clearRect(0,0,fwCanvas.width,fwCanvas.height);
+
+  fireworks = fireworks.filter(fw=>!fw.exploded);
+  fireworks.forEach(fw=>{
+    fw.update();
+    fw.draw();
+  });
+
+  particles = particles.filter(p=>p.life>0);
+  particles.forEach(p=>{
+    p.update();
+    p.draw();
+  });
+
+  if(fireworks.length===0 && particles.length===0){
+    fwRunning = false;
+    ctx.clearRect(0,0,fwCanvas.width,fwCanvas.height);
+    return;
+  }
+  requestAnimationFrame(fwLoop);
+}
+
+
+  
 /* ===== HISTORY ===== */
 function addHistory(text){
   const div = document.createElement("div");
@@ -760,6 +901,3 @@ function rand(){
 </script>
 </body>
 </html>
-
-
-
