@@ -27,6 +27,7 @@ body{
   background:#020617;
   border-radius: 30px;
   padding:5px;
+  position:relative;
 }
 
 /* TEXT */
@@ -383,6 +384,60 @@ body{
   z-index: 9999;
 }
 
+/* ===== XOAY XÚC XẮC CUỐI ===== */
+@keyframes diceSpin {
+  0%   { transform: rotate(0deg) scale(1); }
+  100% { transform: rotate(360deg) scale(1.05); }
+}
+
+.dice.spinning{
+  animation: spinDice .8s linear;
+}
+@keyframes spinDice{
+  from{ transform:rotate(0deg) scale(0.8); }
+  to{ transform:rotate(720deg) scale(1); }
+}
+
+#decisionBonusInfo{
+  display:none;
+  font-size:13px;
+  color:#22c55e;
+  margin-top:6px;
+  animation:pulseBonus 1s infinite;
+}
+
+
+@keyframes pulseBonus{
+  0%{ opacity:.6; }
+  50%{ opacity:1; }
+  100%{ opacity:.6; }
+}
+
+#decisionPanel{
+  position:fixed;
+  top:50%;
+  left:calc(50% - 270px); /* 420/2 + khoảng cách 60px */
+  transform:translate(-120%, -50%);
+  opacity:0;
+
+  background:#020617;
+  border:2px solid #334155;
+  border-radius:12px;
+  padding:12px;
+  text-align:center;
+
+  transition:all .35s cubic-bezier(.2,.8,.2,1);
+  z-index:9999;
+}
+
+#decisionPanel.show{
+  transform:translate(0,-50%);
+  opacity:1;
+}
+
+
+
+
 
 </style>
 </head>
@@ -458,6 +513,24 @@ body{
   </div>
 </div>
 <canvas id="fireworks" class="fw-canvas"></canvas>
+</div>
+<div id="decisionPanel">
+  <div id="decisionWarning" style="font-size:13px;color:#facc15;margin-bottom:6px">
+    "⚠️ Chỉ được đổi cửa và tăng cược 1 lần duy nhất"
+  </div>
+
+  <div style="margin-bottom:6px">
+    ⏳ <span id="decisionCountdown">10</span>s
+  </div>
+  <div id="decisionBonusInfo"
+     style="
+       font-size:13px;
+       color:#22c55e;
+       margin-top:6px;
+     ">
+  💡 Tăng cược từ <b>100</b> trở lên sẽ được thưởng thêm <b>50%</b>
+    </div>
+  </div>
 
 
 <script>
@@ -471,6 +544,15 @@ let winStreak = 0;
 let fireworks = [];
 let particles = [];
 let fwRunning = false;
+let phase = "idle"; 
+let decisionUsed = false;
+let decisionTimer = null;
+let decisionTimeLeft = 10;
+let canResolveResult = false;
+let decisionChanged = false;
+let baseBet = 0;
+let extraBet = 0;
+
 
 const bowl = document.getElementById("bowl");
 const bowlWrap = document.getElementById("bowlWrap");
@@ -483,11 +565,42 @@ const ctx = fwCanvas.getContext("2d");
 
 /* ===== BET ===== */
 function addBet(v){
-  if(pendingResult) return alert("Mở bát đi trời, đợi nhắc hả?");
-  if(money < bet + v) return alert("Đéo đủ tiền kìa cha ơi cha");
+
+  // ===== PHASE TĂNG CƯỢC (decision) =====
+  if(phase === "decision"){
+    const info = document.getElementById("decisionBonusInfo");
+
+    if(v >= 100){
+      info.style.display = "block";
+    }else{
+      info.style.display = "none";
+    }
+
+    if(decisionUsed) return alert("⚠️ Chỉ được tăng cược 1 lần!");
+    if(v > bet) return alert("Không được tăng quá mức cược ban đầu");
+    if(money < v) return alert("Không đủ tiền để tăng cược");
+
+    extraBet += v;
+    bet += v;
+    money -= v;
+
+
+    document.getElementById("money").innerText = money;
+    updateBet();
+
+    decisionUsed = true;
+    endDecisionPhase(); // khóa luôn
+    return;
+  }
+
+  // ===== CƯỢC BÌNH THƯỜNG =====
+  if(pendingResult) return alert("Mở bát đi rồi cược tiếp");
+  if(money < bet + v) return alert("Không đủ tiền");
+
   bet += v;
   updateBet();
 }
+
 function changeBet(v){
   if(pendingResult) return;
   if(bet + v < 0) return;
@@ -505,11 +618,23 @@ function updateBet(){
 
 /* ===== PLAY ===== */
 function play(choice){
-  if(bet === 0) return alert("Mày bị ngu à, đã đặt cược đâu");
-  if(pendingResult) return alert("Biết chơi không vậy, lậy bố");
 
-  // ✅ TRỪ TIỀN NGAY KHI CHƠI
+  // ===== ĐỔI CỬA TRONG DECISION =====
+  if(phase === "decision"){
+    if(decisionChanged) return alert("⚠️ Chỉ được đổi cửa 1 lần!");
+    pendingResult.choice = choice;
+    decisionChanged = true;
+    return;
+  }
+
+  // ===== CHƠI BÌNH THƯỜNG =====
+  if(bet === 0) return alert("Chưa đặt cược");
+  if(pendingResult) return alert("Đang chơi ván này rồi");
+
   money -= bet;
+  baseBet = bet; 
+  extraBet = 0;    
+
   document.getElementById("money").innerText = money;
 
   startShake();
@@ -520,103 +645,60 @@ function play(choice){
   const isTriple = (d1 === d2 && d2 === d3);
 
   let result;
-  if(isTriple){
-    result = "triple";
-  }else if(total <= 10){
-    result = "xiu";
-  }else{
-    result = "tai";
-  }
+  if(isTriple) result = "triple";
+  else if(total <= 10) result = "xiu";
+  else result = "tai";
 
   pendingResult = { d1,d2,d3,total,result,choice };
+  decisionChanged = false;
   resultHandled = false;
 
   diceEls.forEach(d=>d.innerText="?");
 }
 
 
+
 /* ===== MỞ BÁT ===== */
 function openBowl(){
+  if(phase === "decision") return;
   if(!pendingResult || resultHandled) return;
-  
+
   stopShake();
 
   resultHandled = true;
   isBowlOpen = true;
   bowlWrap.style.transform = "translateY(-80px)";
 
-  const { d1,d2,d3,total,result,choice } = pendingResult;
-  // reset về ?
-diceEls.forEach(d=>{
-  d.innerText = "?";
-  d.classList.remove("reveal");
-});
-  // hiện từng viên xúc xắc
-setTimeout(()=>{
-  diceEls[0].innerText = d1;
-  diceEls[0].classList.add("reveal");
-}, 200);
+  const { d1, d2 } = pendingResult;
 
-setTimeout(()=>{
-  diceEls[1].innerText = d2;
-  diceEls[1].classList.add("reveal");
-}, 350);
+  // reset
+  diceEls.forEach(d=>{
+    d.innerText = "?";
+    d.classList.remove("reveal");
+  });
 
-setTimeout(()=>{
-  diceEls[2].innerText = d3;
-  diceEls[2].classList.add("reveal");
-}, 500);
+  // hiện 2 viên đầu
+  setTimeout(()=>{
+    diceEls[0].innerText = d1;
+    diceEls[0].classList.add("reveal");
+  },200);
 
-setTimeout(()=>{
-  /* ===== XỬ LÝ KẾT QUẢ ===== */
-  if(result === "triple"){
-    winStreak = 0;
+  setTimeout(()=>{
+    diceEls[1].innerText = d2;
+    diceEls[1].classList.add("reveal");
+  },350);
 
-    // đã trừ tiền cược từ trước
-    addHistory(`${d1}-${d2}-${d3} | BỘ BA | ${total}`);
-    showPopup("lose");
-  }
+  // quyết định có cho tăng cược không
+  setTimeout(()=>{
+    const s = d1 + d2;
+    const sureResult = (s <= 4 || s >= 11);
 
-  else if(result === choice){
-    winStreak++;
-
-    const rewardMultiplier = getMultiplier(winStreak);
-
-    // trả vốn + lãi
-    const payout = bet * (rewardMultiplier + 1);
-    money += payout;
-    if(payout >= 1000){
-    const count = Math.min(30, Math.floor(payout / 500));
-      launchFireworks(count);
-      fwLoop();
+    if(sureResult){
+      revealLastDice();
+    }else{
+      startDecisionPhase();
     }
-
-
-    showMultiplierFloat(rewardMultiplier);
-
-    addHistory(
-      `${d1}-${d2}-${d3} | ${result.toUpperCase()} | ${total} ×${rewardMultiplier}`
-    );
-
-    showPopup("win");
-  }
-
-
-  else{
-    winStreak = 0;
-
-    // thua thì mất tiền cược đã trừ
-    addHistory(`${d1}-${d2}-${d3} | ${result.toUpperCase()} | ${total}`);
-    showPopup("lose");
-  }
-
-  /* ===== CẬP NHẬT UI ===== */
-  updateBuffUI();
-  document.getElementById("money").innerText = money;
-  clearBet();
-
-  pendingResult = null;
-}, 650);
+  },600);
 }
 
 
@@ -626,7 +708,6 @@ function getMultiplier(streak){
   if(streak >= 3) return 2;
   return 1;
 }
-
 
 
 /* ===== ĐÓNG BÁT ===== */
@@ -764,7 +845,7 @@ function claimLixi(){
   money += amount;
   document.getElementById("money").innerText = money;
 
-  lixiClaimed = true;
+  lixiClaimed = true;// config 
 
   showModal("win");
   document.getElementById("modalText").innerText =
@@ -883,8 +964,123 @@ function fwLoop(){
   requestAnimationFrame(fwLoop);
 }
 
+function startDecisionPhase(){
+  phase = "decision";
+  decisionUsed = false;
+  decisionTimeLeft = 10;
+  canResolveResult = false;
 
-  
+
+  decisionPanel.classList.add("show");
+    setTimeout(()=>{
+  panel.classList.add("show");
+    },10);
+  updateDecisionCountdown();
+
+  decisionTimer = setInterval(()=>{
+    decisionTimeLeft--;
+    updateDecisionCountdown();
+
+    if(decisionTimeLeft <= 0){
+      endDecisionPhase();
+    }
+  },1000);
+}
+
+function updateDecisionCountdown(){
+  document.getElementById("decisionCountdown").innerText = decisionTimeLeft;
+}
+
+function endDecisionPhase(){
+  clearInterval(decisionTimer);
+  decisionPanel.classList.remove("show");
+  setTimeout(()=>{
+    panel.style.display = "none";
+  },350);
+
+  canResolveResult = true;   // 🔓 mở khóa
+  revealLastDice();
+}
+
+function revealLastDice(){
+  const dice = diceEls[2];
+
+  dice.classList.add("spinning");
+
+  setTimeout(()=>{
+    dice.classList.remove("spinning");
+    dice.innerText = pendingResult.d3;
+    dice.classList.add("reveal");
+
+    setTimeout(()=>{
+      finishResult(); // ✅ DUY NHẤT Ở ĐÂY
+    }, 350);
+
+  }, 800);
+}
+
+function finishResult(){
+  const { d1,d2,d3,total,result,choice } = pendingResult;
+
+  let historyText = `${d1}-${d2}-${d3} | ${result.toUpperCase()} | ${total}`;
+
+if(result === choice){
+
+  winStreak++;
+
+  const rewardMultiplier = getMultiplier(winStreak);
+
+  // Base luôn x2
+  let baseWin = baseBet * 2;
+
+  // Extra theo mốc
+  let extraWin = (extraBet >= 100)
+    ? extraBet * 2.5
+    : extraBet * 2;
+
+  // Buff chỉ nhân base
+  if(rewardMultiplier > 1){
+    baseWin *= rewardMultiplier;
+  }
+
+  let payout = baseWin + extraWin;
+
+  money += payout;
+  document.getElementById("money").innerText = money;
+
+  if(payout >= 1000){
+    launchFireworks();
+    fwLoop();
+  }
+
+  showMultiplierFloat(rewardMultiplier);
+  historyText += ` | +${payout}`;
+  showPopup("win");
+  }else{
+    winStreak = 0;
+    historyText += ` | -${baseBet + extraBet}`;
+    showPopup("lose");
+  }
+
+  updateBuffUI();
+  addHistory(historyText);
+
+  // ===== RESET =====
+  bet = 0;
+  baseBet = 0;
+  extraBet = 0;
+
+  updateBet();
+
+  pendingResult = null;
+  phase = "idle";
+  decisionUsed = false;
+  canResolveResult = false;
+  decisionChanged = false;
+}
+
+
+
 /* ===== HISTORY ===== */
 function addHistory(text){
   const div = document.createElement("div");
