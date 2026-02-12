@@ -578,6 +578,7 @@ function addBet(v){
 
   // ===== PHASE TĂNG CƯỢC (decision) =====
   if(phase === "decision"){
+      console.log("PHASE NOW:", phase);
     const info = document.getElementById("decisionBonusInfo");
 
     if(v >= 100){
@@ -586,8 +587,8 @@ function addBet(v){
       info.style.display = "none";
     }
 
-    if(decisionUsed) return alert("⚠️ Chỉ được tăng cược 1 lần!");
-    if(v > bet) return alert("Không được tăng quá mức cược ban đầu");
+    if(extraBet + v > baseBet)
+    return alert("Không được tăng quá mức cược ban đầu");
     if(money < v) return alert("Không đủ tiền để tăng cược");
 
     extraBet += v;
@@ -597,9 +598,6 @@ function addBet(v){
 
     document.getElementById("money").innerText = money;
     updateBet();
-
-    decisionUsed = true;
-    endDecisionPhase(); // khóa luôn
     return;
   }
 
@@ -1011,13 +1009,15 @@ function endDecisionPhase(){
 
   clearInterval(decisionTimer);
 
+  phase = "rolling";   // 👈 QUAN TRỌNG
+
   decisionPanel.classList.remove("show");
 
   setTimeout(()=>{
     revealLastDice();
   },350);
-
 }
+
 
 
 function revealLastDice(){
@@ -1094,6 +1094,7 @@ if(result === choice){
   decisionUsed = false;
   canResolveResult = false;
   decisionChanged = false;
+  phase = "idle";
 }
 
 
