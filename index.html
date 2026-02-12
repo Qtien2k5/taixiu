@@ -85,6 +85,7 @@ body{
   display:flex;
   justify-content:center;
   gap:15px;
+  perspective: 600px;
 }
 
 .dice{
@@ -95,6 +96,8 @@ body{
   display:flex;
   align-items:center;
   justify-content:center;
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
 }
 
 .bowl-wrap{
@@ -391,12 +394,18 @@ body{
 }
 
 .dice.spinning{
-  animation: spinDice .8s linear;
+  animation: spinDice 0.8s ease;
 }
 @keyframes spinDice{
-  from{ transform:rotate(0deg) scale(0.8); }
-  to{ transform:rotate(720deg) scale(1); }
+  0%   { transform: translateX(0); }
+  15%  { transform: translateX(-20px); }
+  30%  { transform: translateX(20px); }
+  45%  { transform: translateX(-15px); }
+  60%  { transform: translateX(15px); }
+  75%  { transform: translateX(-8px); }
+  100% { transform: translateX(0); }
 }
+
 
 #decisionBonusInfo{
   display:none;
@@ -561,6 +570,7 @@ const historyList = document.getElementById("historyList");
 const focusOverlay = document.getElementById("focusOverlay");
 const fwCanvas = document.getElementById("fireworks");
 const ctx = fwCanvas.getContext("2d");
+const decisionPanel = document.getElementById("decisionPanel");
 
 
 /* ===== BET ===== */
@@ -691,7 +701,15 @@ function openBowl(){
   // quyết định có cho tăng cược không
   setTimeout(()=>{
     const s = d1 + d2;
-    const sureResult = (s <= 4 || s >= 11);
+
+    const minTotal = s + 1;
+    const maxTotal = s + 6;
+
+    const sureTai = minTotal > 10;
+    const sureXiu = maxTotal <= 10;
+
+    const sureResult = sureTai || sureXiu;
+
 
     if(sureResult){
       revealLastDice();
@@ -967,14 +985,11 @@ function fwLoop(){
 function startDecisionPhase(){
   phase = "decision";
   decisionUsed = false;
+  decisionChanged = false;
   decisionTimeLeft = 10;
-  canResolveResult = false;
-
 
   decisionPanel.classList.add("show");
-    setTimeout(()=>{
-  panel.classList.add("show");
-    },10);
+
   updateDecisionCountdown();
 
   decisionTimer = setInterval(()=>{
@@ -987,20 +1002,23 @@ function startDecisionPhase(){
   },1000);
 }
 
+
 function updateDecisionCountdown(){
   document.getElementById("decisionCountdown").innerText = decisionTimeLeft;
 }
 
 function endDecisionPhase(){
+
   clearInterval(decisionTimer);
+
   decisionPanel.classList.remove("show");
+
   setTimeout(()=>{
-    panel.style.display = "none";
+    revealLastDice();
   },350);
 
-  canResolveResult = true;   // 🔓 mở khóa
-  revealLastDice();
 }
+
 
 function revealLastDice(){
   const dice = diceEls[2];
@@ -1073,7 +1091,6 @@ if(result === choice){
   updateBet();
 
   pendingResult = null;
-  phase = "idle";
   decisionUsed = false;
   canResolveResult = false;
   decisionChanged = false;
