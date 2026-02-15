@@ -66,6 +66,7 @@ body{
   width:55px;
   cursor:pointer;
   transition:.15s;
+  border-radius: 20%;
 }
 .chip:hover{transform:scale(1.1);}
 
@@ -444,6 +445,62 @@ body{
   opacity:1;
 }
 
+#topTicker{
+  position:absolute;
+  top:30px;                /* 👈 khoảng cách từ trên xuống */
+  left:50%;
+  transform:translateX(-50%);
+  width:570px;             /* 👈 đúng bằng width .game */
+  overflow:hidden;
+  background:linear-gradient(90deg,#000 0%,#1a1a1a 40%,#d4af37 100%);
+  border:2px solid #d4af37;
+  border-radius: 5px;
+  box-shadow:0 0 20px rgba(212,175,55,.6);
+  opacity:0;
+  transition:opacity .4s ease;
+  z-index:50;
+}
+
+#topTicker.show{
+  top:20px;                  /* trượt xuống */
+  opacity:1;
+}
+
+.ticker-inner{
+  background:linear-gradient(90deg,#000 0%,#1a1a1a 40%,#d4af37 100%);
+  border:2px solid #d4af37;
+  border-radius:14px;
+  box-shadow:0 0 20px rgba(212,175,55,.6);
+  padding:5px 0;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  font-weight:bold;
+  color:#ffd700;
+}
+
+#topTicker.bigwin .ticker-inner{
+  background:linear-gradient(90deg,#3b0000 0%,#8b0000 50%,#ff0000 100%);
+  border-color:#ff4d4d;
+  box-shadow:0 0 25px rgba(255,0,0,.7);
+  color:#fff;
+}
+
+.speaker{
+  animation:speakerShake 1s infinite;
+}
+
+
+@keyframes tickerMove{
+  from{ transform:translateX(100%); }
+  to{ transform:translateX(-100%); }
+}
+
+@keyframes speakerShake{
+  0%,100%{ transform:rotate(0deg); }
+  25%{ transform:rotate(-10deg); }
+  75%{ transform:rotate(10deg); }
+}
 
 
 
@@ -451,6 +508,11 @@ body{
 </style>
 </head>
 <body>
+  <div id="topTicker">
+  <div class="ticker-content">
+    🔊 Hệ thống đang bảo trì nhẹ lúc 03:00 – Chúc anh em may mắn!
+  </div>
+</div>
 <div class="game">
   <div class="top">🎲 TÀI XỈU CASINO</div>
 
@@ -561,6 +623,7 @@ let canResolveResult = false;
 let decisionChanged = false;
 let baseBet = 0;
 let extraBet = 0;
+let tickerRunning = false;
 
 
 const bowl = document.getElementById("bowl");
@@ -571,6 +634,20 @@ const focusOverlay = document.getElementById("focusOverlay");
 const fwCanvas = document.getElementById("fireworks");
 const ctx = fwCanvas.getContext("2d");
 const decisionPanel = document.getElementById("decisionPanel");
+const ticker = document.getElementById("topTicker");
+const tickerMessages = [
+  "🔊 Hệ thống bảo trì nhẹ lúc 03:00 – Anh em chú ý!",
+  "🎉 Người chơi MinhKhoa vừa thắng 5,000₫ liên tiếp 3 ván!",
+  "🔥 Hiện có 128 người đang online",
+  "💰 Thưởng thêm 50% khi tăng cược từ 100 trở lên",
+  "🏆 ThanhPro đạt chuỗi 5 thắng liên tiếp!",
+  "⚡ Đặt cược sớm để không bỏ lỡ cơ hội!"
+];
+const tickerText = ticker.querySelector(".ticker-content");
+const fakeNames = [
+  "MinhKhoa","ThanhPro","BốGià","HổBáo",
+  "SóiĐêm","RồngLửa","PhúcVip","CáMập"
+]
 
 
 /* ===== BET ===== */
@@ -1097,6 +1174,75 @@ if(result === choice){
   phase = "idle";
 }
 
+function showTicker(){
+
+  const msg = generateMessage();
+  tickerText.innerText = msg.text;
+
+  tickerText.style.animation = "none";
+  void tickerText.offsetWidth;
+  tickerText.style.animation = "tickerMove 12s linear infinite";
+
+  ticker.classList.add("show");
+
+  setTimeout(()=>{
+    ticker.classList.remove("show");
+  },25000);
+
+}
+
+// // sau 20–40 giây mới hiện lần đầu
+// setTimeout(()=>{
+//   showTicker();
+
+//   // sau đó cứ 60–120 giây xuất hiện lại
+//   setInterval(()=>{
+//     showTicker();
+//   }, Math.random()*60000 + 60000);
+
+// }, Math.random()*20000 + 20000);
+
+setTimeout(()=>{
+  showTicker();
+}, 2000);
+
+setInterval(()=>{
+  showTicker();
+}, 45000);
+
+function randomMoney(min,max){
+  return (Math.floor(Math.random()*(max-min))+min)*100;
+}
+
+function generateMessage(){
+
+  const type = Math.random();
+
+  // 40% người thắng lớn
+  if(type < 0.4){
+    const name = fakeNames[Math.floor(Math.random()*fakeNames.length)];
+    const amount = randomMoney(20,150); // 2000 -> 15000
+    return {
+      text: `🎉 ${name} vừa thắng ${amount.toLocaleString()}₫ liên tiếp!`,
+      big: amount >= 10000
+    };
+  }
+
+  // 30% thông báo online
+  if(type < 0.7){
+    const online = Math.floor(Math.random()*200)+80;
+    return {
+      text: `🔥 Hiện có ${online} người đang chơi`,
+      big: false
+    };
+  }
+
+  // 30% thông báo hệ thống
+  return {
+    text: "⚡ Đặt cược sớm để nhận thưởng tăng cược 50%",
+    big: false
+  };
+}
 
 
 /* ===== HISTORY ===== */
